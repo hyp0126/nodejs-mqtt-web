@@ -1,26 +1,27 @@
 <%- include('layouts/header'); -%>
 <body>
     <%- include('layouts/nav'); -%>
-    <section>
-        <form name="myform" method="Post" action="">
-            <label>Username</label>
-            <input id="username" type="text" name="username"><br/>
-
-            <label>Password</label>
-            <input id="password" type="password" name="password"><br/>
-            <br/><br/>
-
-            <input type="submit" value="Submit">
-            <p id="errors">
-                <%
-                if(typeof(error) !== 'undefined') {
-                    %>
-                    <%= error %>
-                    <%
-                }
+    <div class="container pt-3">
+      <form name="myform" method="Post" action="">
+        <div class="form-group">
+          <label for="username" class="mr-sm-2">Username:</label>
+          <input type="username" class="form-control mb-2 mr-sm-2" placeholder="Enter username" id="username" name="username">
+        </div>
+        <div class="form-group">
+          <label for="password" class="mr-sm-2">Password:</label>
+          <input type="password" class="form-control mb-2 mr-sm-2" placeholder="Enter password" id="password" name="password">
+        </div>
+        <button type="submit" class="btn btn-primary mb-2">Submit</button>
+        <p id="errors">
+            <%
+            if(typeof(error) !== 'undefined') {
                 %>
-            </p>
-        </form>
-    </section>
+                <%= error %>
+                <%
+            }
+            %>
+        </p>
+      </form>
+    </div>
 </body>
 <%- include('layouts/footer'); -%>

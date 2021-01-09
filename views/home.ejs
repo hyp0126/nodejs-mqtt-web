@@ -1,6 +1,25 @@
 <%- include('layouts/header') -%>
 <body>
   <%- include('layouts/nav') -%>
-<h1> <%=temperature%> </h1>
+  <div class="jumbotron jumbotron-fluid">
+    <div class="container pt-3">
+      <h1>Room 1</h1>
+      <dl class="row">
+        <dt class="col-sm-3">Temperature</dt>
+        <dd class="col-sm-9"><%=roomData.temperature%></dd>
+      
+        <dt class="col-sm-3">Humidity</dt>
+        <dd class="col-sm-9"><%=roomData.humidity%></dd>
+
+        <dt class="col-sm-3">Brightness</dt>
+        <dd class="col-sm-9"><%=roomData.brightness%></dd>
+
+        <dt class="col-sm-3">Led State</dt>
+        <dd class="col-sm-9"><%=roomData.ledState%></dd>
+
+      </dl>
+      <a onClick = 'toggleLed()' href='/' class="btn btn-info" role="button">Toogle LED</a>
+    </div>
+</div>
 </body>
 <%- include('layouts/footer') -%>
