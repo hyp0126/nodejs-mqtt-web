@@ -2,7 +2,7 @@
 function onLoadChart() {
     var date = new Date()
     updateChart(date);
-    $("#datepicker").val((date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear())
+    $("#datepicker").val(`${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`)
 }
 
 function onChangeDate(){
@@ -38,10 +38,15 @@ function updateChart(date) {
                 }
             }
             $("#chartContainer").CanvasJSChart(options);
-            console.log("Success: ", result);
+            if (result.tempMsgs.length == 0){
+                $('#errors').html("No data on this date");
+            } else {
+                $('#errors').html("Data loading completed");
+                console.log("Success: ", result);
+            }
         },
         error: function (e) {
-            $('h1').html("<strong>Error</strong>");
+            $('#errors').html("<strong>Error</strong>");
             console.log("ERROR: ", e);
         }
     });
@@ -50,7 +55,7 @@ function updateChart(date) {
         animationEnabled: true,
         theme: "light2",
         title: {
-            text: (date.getMonth() + 1) + '/' + date.getDate() + '/' + date.getFullYear() + "  Room Temperature"
+            text: `Room Temperature (${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()})`
         },
         axisX: {
             valueFormatString: "HH:mm"

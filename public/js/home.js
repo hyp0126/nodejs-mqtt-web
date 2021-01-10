@@ -8,7 +8,7 @@ function getRoomData() {
             console.log("Success: ", result);
         },
         error : function(e) {
-            $('h1').html("<strong>Error</strong>");
+            $('#errors').html("<strong>Error</strong>");
             console.log("ERROR: ", e);
         }
     })

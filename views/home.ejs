@@ -1,5 +1,5 @@
 <%- include('layouts/header') -%>
-<body onload="onLoadView('<%=roomData.length%>')">
+<body onload="onLoadView('<%= roomData.length %>')">
   <div class="jumbotron text-center header" style="margin-bottom:0">
     <h1>Nodejs Mqtt Website</h1>
   </div>
@@ -9,7 +9,7 @@
         <div class="row h-100 justify-content-center align-items-center" >
           <% for(var i=0; i<roomData.length; i++) {%>
             <div class="col-sm-4">
-              <h3>Room <%=i+1%></h3>
+              <h3>Room <%= i+1 %></h3>
               <div>
                 <h5>Temperature</h5>
                 <div id="<%= 'gauge' + (i*3) %>"></div>
@@ -28,6 +28,11 @@
               </div>
             </div>
           <% } %>
+          <p class="text-danger" id="errors">
+            <% if(typeof(error) !== 'undefined') { %>
+                <%= error %>
+            <% } %>
+        </p>
         </div>
       </div>
     </div>

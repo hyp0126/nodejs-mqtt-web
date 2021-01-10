@@ -55,7 +55,7 @@ myApp.use(session({
     saveUninitialized: true
 }));
 
-// Set up MQTT
+// Set up & Connect MQTT server
 var mqtt = require('mqtt');
 const fs = require('fs');
 var caFile = fs.readFileSync(process.env.CA_FILE);
@@ -73,7 +73,7 @@ var options={
 var client  = mqtt.connect(process.env.MQTT_SERVER_URI, options);
 console.log("connected flag  " + client.connected);
 
-//handle incoming messages
+// Handle incoming messages
 const maxRoomNumber = 2;
 var roomData = [];
 for (i = 0; i < maxRoomNumber; i++){
@@ -112,7 +112,7 @@ client.on('message',function(topic, message, packet){
     mqttMsg.topic = topic;
     mqttMsg.value = message.toString();
     mqttMsg.date = new Date();
-    //save the MqttMsg
+    // Save the MqttMsg to MongoDB
     mqttMsg.save().then(function(){
         console.log('New mqttMsg created');
     });
@@ -122,26 +122,31 @@ client.on("connect",function(){
     console.log("connected  "+ client.connected);
 });
 
-//handle errors
+// Handle errors
 client.on("error",function(error){
     console.log("Can't connect" + error);
     process.exit(1)
 });
 
-var topic_list=[
-    'home/room1/temperature',
-    'home/room1/humidity',
-    'home/room1/brightness',
-    'home/room1/ledState',
-    'home/room2/temperature',
-    'home/room2/humidity',
-    'home/room2/brightness',
-    'home/room2/ledState'
-];
-
 console.log("subscribing to topics");
-//client.subscribe(topic,{qos:1}); //single topic
-client.subscribe(topic_list,{qos:1}); //topic list
+for (var i = 0; i < maxRoomNumber; i++){
+    client.subscribe(`home/room${i+1}/temperature`, {qos:1});
+    client.subscribe(`home/room${i+1}/humidity`, {qos:1});
+    client.subscribe(`home/room${i+1}/brightness`, {qos:1});
+    client.subscribe(`home/room${i+1}/ledState`, {qos:1});
+}
+
+// var topic_list=[
+//     'home/room1/temperature',
+//     'home/room1/humidity',
+//     'home/room1/brightness',
+//     'home/room1/ledState',
+//     'home/room2/temperature',
+//     'home/room2/humidity',
+//     'home/room2/brightness',
+//     'home/room2/ledState'
+// ];
+// client.subscribe(topic_list,{qos:1}); //topic list
 //var topic_o={"topic22":0,"topic33":1,"topic44":1};
 //client.subscribe(topic_o); //object
 //notice this is printed even before we connect
@@ -149,6 +154,8 @@ console.log("end of script");
 
 // Set up Route
 // Login page
+var redirectPage = '/';
+
 myApp.get('/login', function(req, res){
     res.render('login');
 });
@@ -158,18 +165,18 @@ myApp.post('/login', function(req, res){
     var pass = req.body.password;
 
     Admin.findOne({username: user, password: pass}).exec(function(err, admin){
-        // log erros
+        // Log erros
         console.log('Error: ' + err);
         console.log('Admin: ' + admin);
         if (admin) {
-            // store username in session and set logged in true
+            // Store username in session and set logged in true
             req.session.username = admin.username;
             req.session.userLoggedIn = true;
-            // redirect to the dashboard
-            res.redirect('/');
+            // Redirect to the dashboard
+            res.redirect(redirectPage);
         }
         else {
-            res.render('login', {error: 'sorry, cannot login!'});
+            res.render('login', {error: 'Check username or password!'});
         }
     });
 });
@@ -187,6 +194,7 @@ myApp.get('/', function(req, res){
     if (req.session.userLoggedIn){
         res.render('home', {roomData: roomData});
     } else {
+        redirectPage = '/';
         res.redirect('/login');
     }
 });
@@ -197,10 +205,10 @@ myApp.get('/chart', function(req, res){
     if (req.session.userLoggedIn){
         res.render('chart', {roomData: roomData});
     } else {
+        redirectPage = '/chart';
         res.redirect('/login');
     }
 });
-
 
 // Ajax for roomDate
 myApp.get('/roomData', function(req, res){
@@ -209,7 +217,7 @@ myApp.get('/roomData', function(req, res){
     }
 });
 
-// Ajax for today temperature
+// Ajax for temperature on the selected date
 myApp.post('/temperature', function(req, res){
     if (req.session.userLoggedIn){
         var localDate = new Date(req.body.date);
@@ -232,28 +240,26 @@ myApp.post('/temperature', function(req, res){
     }
 });
 
-// toggleLed
+// Toggle Led
 var mqttOptions = {
     retain:true,
     qos:1
 };
-var topicLed=[];
-topicLed.push('home/room1/led');
-topicLed.push('home/room2/led');
 
-var message='';
 myApp.post('/led', function(req, res){
+    var message='';
+
     if (req.session.userLoggedIn){
-        var id = req.body.id;
-        if (id == 1 || id == 2) {
+        var id = parseInt(req.body.id);
+        if (id > 0 && id <= maxRoomNumber) {
             if (roomData[id-1].ledState == '1'){
                 message = '0';
             } else {
                 message = '1';
             }
             if (client.connected == true){
-                client.publish(topicLed[id-1],message,mqttOptions);
-                console.log("publishing",topicLed[id-1] + '/' + message);
+                client.publish(`home/room${id}/led`,message,mqttOptions);
+                console.log("publishing", `home/room${id}/led/${message}`);
             }
         }
     }

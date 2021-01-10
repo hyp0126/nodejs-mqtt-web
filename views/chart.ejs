@@ -4,15 +4,23 @@
     <h1>Nodejs Mqtt Website</h1>
   </div>
   <%- include('layouts/nav') -%>
-  <div class="jumbotron jumbotron-fluid">
+  <div class="jumbotron jumbotron-fluid header">
     <div class="container pt-3 h-100">
-      <input id="datepicker" width="276" onChange="onChangeDate()"/>
+      <input id="datepicker" width="200" onChange="onChangeDate()"/>
       <script>
         $('#datepicker').datepicker({
             uiLibrary: 'bootstrap4'
         });
       </script>
-      <div class="pt-3"id="chartContainer" style="height: 300px; width: 100%;"></div>
+      <p class="text-danger" id="errors">
+        <% if(typeof(error) !== 'undefined') { %>
+            <%= error %>
+        <% } %>
+      </p>
+      <div class="pt-3" id="chartContainer" style="height: 300px; width: 100%;"></div>
+      <br />
+      <br />
+      <br />
     </div>
   </div>
 </body>
