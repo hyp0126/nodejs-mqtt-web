@@ -1,25 +1,36 @@
 <%- include('layouts/header') -%>
-<body>
+<body onload="onLoadView('<%=roomData.length%>')">
+  <div class="jumbotron text-center header" style="margin-bottom:0">
+    <h1>Nodejs Mqtt Website</h1>
+  </div>
   <%- include('layouts/nav') -%>
-  <div class="jumbotron jumbotron-fluid">
-    <div class="container pt-3">
-      <h1>Room 1</h1>
-      <dl class="row">
-        <dt class="col-sm-3">Temperature</dt>
-        <dd class="col-sm-9"><%=roomData.temperature%></dd>
-      
-        <dt class="col-sm-3">Humidity</dt>
-        <dd class="col-sm-9"><%=roomData.humidity%></dd>
-
-        <dt class="col-sm-3">Brightness</dt>
-        <dd class="col-sm-9"><%=roomData.brightness%></dd>
-
-        <dt class="col-sm-3">Led State</dt>
-        <dd class="col-sm-9"><%=roomData.ledState%></dd>
-
-      </dl>
-      <a onClick = 'toggleLed()' href='/' class="btn btn-info" role="button">Toogle LED</a>
+    <div class="jumbotron jumbotron-fluid header">
+      <div class="container pt-3 h-100">
+        <div class="row h-100 justify-content-center align-items-center" >
+          <% for(var i=0; i<roomData.length; i++) {%>
+            <div class="col-sm-4">
+              <h3>Room <%=i+1%></h3>
+              <div>
+                <h5>Temperature</h5>
+                <div id="<%= 'gauge' + (i*3) %>"></div>
+              </div>
+              <div>
+                <h5>Humidity</h5>
+                <div id="<%= 'gauge' + (i*3 + 1) %>"></div>
+              </div>
+              <div>
+                <h5>Brightness</h5>
+                <div id="<%= 'gauge' + (i*3 + 2) %>"></div>
+              </div>
+              <div class="custom-control custom-switch" onclick="onSwitchClick('<%=i+1%>')">
+                <input id="<%= 'switch' + i %>" type="checkbox" class="custom-control-input">
+                <label class="custom-control-label" for="switchLed">LED</label>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 </body>
 <%- include('layouts/footer') -%>

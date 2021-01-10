@@ -1,0 +1,19 @@
+<%- include('layouts/header') -%>
+<body onload="onLoadChart()">
+  <div class="jumbotron text-center header" style="margin-bottom:0">
+    <h1>Nodejs Mqtt Website</h1>
+  </div>
+  <%- include('layouts/nav') -%>
+  <div class="jumbotron jumbotron-fluid">
+    <div class="container pt-3 h-100">
+      <input id="datepicker" width="276" onChange="onChangeDate()"/>
+      <script>
+        $('#datepicker').datepicker({
+            uiLibrary: 'bootstrap4'
+        });
+      </script>
+      <div class="pt-3"id="chartContainer" style="height: 300px; width: 100%;"></div>
+    </div>
+  </div>
+</body>
+<%- include('layouts/footer') -%>

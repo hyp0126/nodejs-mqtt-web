@@ -4,10 +4,7 @@ function getRoomData() {
         type : "GET",
         url: '/roomData',
         success: function(result){
-            $('#temperature').html(result.roomData.temperature);
-            $('#humidity').html(result.roomData.humidity);
-            $('#brightness').html(result.roomData.brightness);
-            $('#ledState').html(result.roomData.ledState);
+            setGauge(result.roomData);
             console.log("Success: ", result);
         },
         error : function(e) {
@@ -17,13 +14,46 @@ function getRoomData() {
     })
 }
 
-var refreshIntervalId = setInterval(getRoomData, 10000);
-//clearInterval(refreshIntervalId);
+var gauges = [];
 
-function toggleLed() {
+function setGauge(roomData) {
+    for (var i = 0; i < roomData.length; i++) {
+        gauges[i * 3].refresh(parseFloat(roomData[i].temperature));
+        gauges[i * 3 + 1].refresh(parseFloat(roomData[i].humidity));
+        gauges[i * 3 + 2].refresh(parseFloat((1024 - roomData[i].brightness) / 10.24));
+        var switchLed = '#switch' + i;
+        if (roomData[i].ledState == '0') {
+            $(switchLed).prop("checked", false);
+        } else {
+            $(switchLed).prop("checked", true);
+        }
+    }
+}
+
+function onLoadView(roomNum) {
+    var refreshIntervalId = setInterval(getRoomData, 10000);
+    //clearInterval(refreshIntervalId);
+
+    for (var i = 0; i < roomNum * 3; i++){
+        gauges.push(new JustGage({
+            id: "gauge" + i, // the id of the html element
+            value: 0,
+            min: 0,
+            max: 100,
+            decimals: 2,
+            gaugeWidthScale: 0.6
+        }));
+    }
+
+    getRoomData();
+}
+
+function onSwitchClick(id) {
     $.ajax({
-        type : "GET",
+        type : "Post",
         url: '/led',
+        cache: false,
+        data: {id: id},
         success: function(result){
             console.log("Success: ", result);
         },

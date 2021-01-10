@@ -1,6 +1,10 @@
 // Initial Code from: http://www.steves-internet-guide.com/using-node-mqtt-client/
 // 2021-01-07 Add express
-// 2021-01-08 Add Mongoose, session login/logout, Bootstrap4
+// 2021-01-08 Add Mongoose, session login/logout, 
+//              PM2, Bootstrap4
+// 2021-01-09 Add gauge https://github.com/toorshia/justgage
+//                chart https://canvasjs.com/jquery-charts/line-chart/
+//                datepicker https://gijgo.com/datepicker/example/bootstrap-4
 
 dotenv = require('dotenv');
 const express = require('express');
@@ -24,6 +28,7 @@ mongoose.connect(process.env.MONGODB_URI,{
 const MqttMsg = mongoose.model('MqttMsg', {
     topic: String,
     value: String,
+    date: Date
 });
 
 // Set up the model for admin
@@ -69,35 +74,45 @@ var client  = mqtt.connect(process.env.MQTT_SERVER_URI, options);
 console.log("connected flag  " + client.connected);
 
 //handle incoming messages
-var roomData = {
-    temperature: '',
-    humidity: '',
-    brightness: '',
-    ledState: '',
+const maxRoomNumber = 2;
+var roomData = [];
+for (i = 0; i < maxRoomNumber; i++){
+    roomData.push({
+        temperature: '',
+        humidity: '',
+        brightness: '',
+        ledState: '',
+    });
 }
 
 client.on('message',function(topic, message, packet){
 	console.log('message is ' + message);
     console.log('topic is ' + topic);
 
-    temperature = topic.toString() + '/' + message.toString();
-    if (topic.toString() == 'home/room1/temperature'){
-        roomData.temperature = message.toString();
+    for (i = 0; i < maxRoomNumber; i++){
+        var topics = topic.toString().split('/');
+        if (topics[1] == 'room'.concat(i+1)){
+            if (topics[2] == 'temperature'){
+                roomData[i].temperature = message.toString();
+            }
+            if (topics[2] == 'humidity'){
+                roomData[i].humidity = message.toString();
+            }
+            if (topics[2] == 'brightness'){
+                roomData[i].brightness = message.toString();
+            }
+            if (topics[2] == 'ledState'){
+                roomData[i].ledState = message.toString();
+            }
+        }
     }
-    if (topic.toString() == 'home/room1/humidity'){
-        roomData.humidity = message.toString();
-    }
-    if (topic.toString() == 'home/room1/brightness'){
-        roomData.brightness = message.toString();
-    }
-    if (topic.toString() == 'home/room1/ledState'){
-        roomData.ledState = message.toString();
-    }
+
     // Create an object for the model MqttMsg
     var mqttMsg = new MqttMsg();
-    mqttMsg.topic = topic.toString();
+    mqttMsg.topic = topic;
     mqttMsg.value = message.toString();
-    //save the order
+    mqttMsg.date = new Date();
+    //save the MqttMsg
     mqttMsg.save().then(function(){
         console.log('New mqttMsg created');
     });
@@ -117,16 +132,18 @@ var topic_list=[
     'home/room1/temperature',
     'home/room1/humidity',
     'home/room1/brightness',
-    'home/room1/ledState'
+    'home/room1/ledState',
+    'home/room2/temperature',
+    'home/room2/humidity',
+    'home/room2/brightness',
+    'home/room2/ledState'
 ];
 
-//var topic_o={"topic22":0,"topic33":1,"topic44":1};
 console.log("subscribing to topics");
 //client.subscribe(topic,{qos:1}); //single topic
 client.subscribe(topic_list,{qos:1}); //topic list
+//var topic_o={"topic22":0,"topic33":1,"topic44":1};
 //client.subscribe(topic_o); //object
-
-//var timer_id=setInterval(function(){publish(topic,message,options);},5000);
 //notice this is printed even before we connect
 console.log("end of script");
 
@@ -174,9 +191,45 @@ myApp.get('/', function(req, res){
     }
 });
 
-// Ajax for room1
+// Chart page
+myApp.get('/chart', function(req, res){
+    // check if the user is logged in
+    if (req.session.userLoggedIn){
+        res.render('chart', {roomData: roomData});
+    } else {
+        res.redirect('/login');
+    }
+});
+
+
+// Ajax for roomDate
 myApp.get('/roomData', function(req, res){
-    res.send({roomData: roomData});
+    if (req.session.userLoggedIn){
+        res.send({roomData: roomData});
+    }
+});
+
+// Ajax for today temperature
+myApp.post('/temperature', function(req, res){
+    if (req.session.userLoggedIn){
+        var localDate = new Date(req.body.date);
+        var year = localDate.getFullYear();
+        var month = localDate.getMonth();
+        var day = localDate.getDate();
+        var startTime = new Date(year, month, day, 0, 0, 0);
+        var endTime = new Date(year, month, day, 23, 59, 59);
+        MqttMsg.find({"date": {'$gte': startTime, '$lte': endTime}}).exec(function(err, mqttMsgs){
+            var topics;
+            var tempMsgs = [];
+            for (var i = 0; i < mqttMsgs.length; i++){
+                topics = mqttMsgs[i].topic.split('/');
+                if (topics[2] == 'temperature'){
+                    tempMsgs.push(mqttMsgs[i]);
+                }
+            }
+            res.send({tempMsgs: tempMsgs});
+        });
+    }
 });
 
 // toggleLed
@@ -184,17 +237,25 @@ var mqttOptions = {
     retain:true,
     qos:1
 };
-var topic='home/room1/led';
+var topicLed=[];
+topicLed.push('home/room1/led');
+topicLed.push('home/room2/led');
+
 var message='';
-myApp.get('/led', function(req, res){
-    if (roomData.ledState == '1'){
-        message = '0';
-    } else {
-        message = '1';
-    }
-    if (client.connected == true){
-        client.publish(topic,message,mqttOptions);
-        console.log("publishing",topic + '/' + message);
+myApp.post('/led', function(req, res){
+    if (req.session.userLoggedIn){
+        var id = req.body.id;
+        if (id == 1 || id == 2) {
+            if (roomData[id-1].ledState == '1'){
+                message = '0';
+            } else {
+                message = '1';
+            }
+            if (client.connected == true){
+                client.publish(topicLed[id-1],message,mqttOptions);
+                console.log("publishing",topicLed[id-1] + '/' + message);
+            }
+        }
     }
 });
 
