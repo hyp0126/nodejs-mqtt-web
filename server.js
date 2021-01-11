@@ -10,6 +10,7 @@ dotenv = require('dotenv');
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
+var crypto = require("crypto");
 
 dotenv.config({ path: '.env' });
 dotenv.config();
@@ -19,10 +20,41 @@ const session = require('express-session');
 
 // Set up DB connection
 const mongoose = require('mongoose');
-mongoose.connect(process.env.MONGODB_URI,{
+
+var dbConnection = mongoose.connection;
+var dbOption = {
     useNewUrlParser: true,
-    useUnifiedTopology: true
+    useUnifiedTopology: true,
+    auto_reconnect: true
+}
+
+dbConnection.on('connecting', function() {
+  console.log('connecting to MongoDB...');
 });
+
+dbConnection.on('error', function(error) {
+  console.error('Error in MongoDb connection: ' + error);
+  mongoose.disconnect();
+});
+
+dbConnection.on('connected', function() {
+  console.log('MongoDB connected!');
+});
+
+dbConnection.once('open', function() {
+  console.log('MongoDB connection opened!');
+});
+
+dbConnection.on('reconnected', function () {
+  console.log('MongoDB reconnected!');
+});
+
+dbConnection.on('disconnected', function() {
+  console.log('MongoDB disconnected!');
+  mongoose.connect(process.env.MONGODB_URI, dbOption);
+});
+
+mongoose.connect(process.env.MONGODB_URI, dbOption);
 
 // Set up the model for the mqtt message
 const MqttMsg = mongoose.model('MqttMsg', {
@@ -61,17 +93,19 @@ var mqtt = require('mqtt');
 const fs = require('fs');
 var caFile = fs.readFileSync(process.env.CA_FILE);
 
-var options={
-    clientId: 'nodejs-mqtt-web-01',
+var options = {
+    clientId: 'nodejs' + crypto.randomBytes(4).toString('hex'),
     rejectUnauthorized : false,
     ca:caFile, 
     username: process.env.MQTT_USERNAME,
     password: process.env.MQTT_PASSWORD,
-    clean:true
+    clean: true,
+    keepalive: 20,
+    reconnectPeriod: 1000 * 60
 };
 
-var client  = mqtt.connect(process.env.MQTT_SERVER_URI, options);
-console.log("connected flag  " + client.connected);
+var mqttclient = mqtt.connect(process.env.MQTT_SERVER_URI, options);
+console.log("connected flag  " + mqttclient.connected);
 
 // Initialize mqtt data buffer
 const maxRoomNumber = 2;
@@ -86,9 +120,9 @@ for (i = 0; i < maxRoomNumber; i++){
 }
 
 // Handle incoming messages
-client.on('message',function(topic, message, packet){
-	console.log('message is ' + message);
-    console.log('topic is ' + topic);
+mqttclient.on('message',function(topic, message, packet){
+	//console.log('message is ' + message);
+    //console.log('topic is ' + topic);
 
     for (i = 0; i < maxRoomNumber; i++){
         var topics = topic.toString().split('/');
@@ -115,43 +149,37 @@ client.on('message',function(topic, message, packet){
     mqttMsg.date = new Date();
     // Save the MqttMsg to MongoDB
     mqttMsg.save().then(function(){
-        console.log('New mqttMsg created');
+        //console.log('New mqttMsg created');
     });
 });
 
-client.on("connect",function(){	
-    console.log("connected  "+ client.connected);
+mqttclient.on("connect", function() {	
+    console.log("connected  "+ mqttclient.connected);
+
+    console.log("subscribing to topics");
+    for (var i = 0; i < maxRoomNumber; i++) {
+        mqttclient.subscribe(`home/room${i+1}/temperature`, {qos:1});
+        mqttclient.subscribe(`home/room${i+1}/humidity`, {qos:1});
+        mqttclient.subscribe(`home/room${i+1}/brightness`, {qos:1});
+        mqttclient.subscribe(`home/room${i+1}/ledState`, {qos:1});
+    }
+    console.log("end of script");
+});
+
+mqttclient.on('disconnect', function() {	
+    console.log("Mqtt disconnected");
+});
+
+mqttclient.on('close', function() {	
+    console.log("Mqtt closed");
 });
 
 // Handle errors
-client.on("error",function(error){
-    console.log("Can't connect" + error);
-    process.exit(1)
+mqttclient.on("error",function(error){
+    console.log("Mqtt can't connect" + error);
+    process.exit(1);
+    //client.end();
 });
-
-console.log("subscribing to topics");
-for (var i = 0; i < maxRoomNumber; i++){
-    client.subscribe(`home/room${i+1}/temperature`, {qos:1});
-    client.subscribe(`home/room${i+1}/humidity`, {qos:1});
-    client.subscribe(`home/room${i+1}/brightness`, {qos:1});
-    client.subscribe(`home/room${i+1}/ledState`, {qos:1});
-}
-
-// var topic_list=[
-//     'home/room1/temperature',
-//     'home/room1/humidity',
-//     'home/room1/brightness',
-//     'home/room1/ledState',
-//     'home/room2/temperature',
-//     'home/room2/humidity',
-//     'home/room2/brightness',
-//     'home/room2/ledState'
-// ];
-// client.subscribe(topic_list,{qos:1}); //topic list
-//var topic_o={"topic22":0,"topic33":1,"topic44":1};
-//client.subscribe(topic_o); //object
-//notice this is printed even before we connect
-console.log("end of script");
 
 // Set up Route
 // Login page
@@ -166,9 +194,9 @@ myApp.post('/login', function(req, res){
     var pass = req.body.password;
 
     Admin.findOne({username: user, password: pass}).exec(function(err, admin){
-        // Log erros
-        console.log('Error: ' + err);
-        console.log('Admin: ' + admin);
+        // Log errors
+        //console.log('Error: ' + err);
+        //console.log('Admin: ' + admin);
         if (admin) {
             // Store username in session and set logged in true
             req.session.username = admin.username;
@@ -246,7 +274,7 @@ myApp.post('/temperature', function(req, res){
 });
 
 // Toggle Led
-var mqttOptions = {
+var mqttPubOptions = {
     retain:true,
     qos:1
 };
@@ -262,8 +290,8 @@ myApp.post('/led', function(req, res){
             } else {
                 message = '1';
             }
-            if (client.connected == true){
-                client.publish(`home/room${id}/led`,message,mqttOptions);
+            if (mqttclient.connected == true){
+                mqttclient.publish(`home/room${id}/led`,message,mqttPubOptions);
                 console.log("publishing", `home/room${id}/led/${message}`);
             }
         }
