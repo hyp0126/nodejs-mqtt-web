@@ -4,6 +4,8 @@
 
 2. ESP8266 MQTT (Temperature, Humidity, Light intensity, LED) -> GCP (Ubuntu: mosquitto) -> <b>GCP(Ubuntu: Nodejs WEB server)</b>
 
+3. ESP8266 MQTT -> GCP (Ubuntu: mosquitto) -> <b>GCP(Ubuntu: Nodejs WEB server 8080) -> GCP(NGINX:Reverse Proxy 430)</b>
+
 ### Webpage Screenshots
 <p align="center">
   <img src="https://github.com/hyp0126/nodejs-mqtt-web/blob/master/Guage.png?raw=true" width="700" />
