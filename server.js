@@ -47,6 +47,7 @@ myApp.set('views', path.join(__dirname, 'views'));
 myApp.use(express.static(__dirname + '/public'));
 myApp.set('view engine', 'ejs');
 myApp.use(bodyParser.urlencoded({extended: false}));
+myApp.use(bodyParser.json());
 
 // Set up session 
 myApp.use(session({
@@ -55,12 +56,11 @@ myApp.use(session({
     saveUninitialized: true
 }));
 
-// Set up & Connect MQTT server
+// Set up & Connect MQTT server with TLS/SSL
 var mqtt = require('mqtt');
 const fs = require('fs');
 var caFile = fs.readFileSync(process.env.CA_FILE);
 
-var count = 0;
 var options={
     clientId: 'nodejs-mqtt-web-01',
     rejectUnauthorized : false,
@@ -73,7 +73,7 @@ var options={
 var client  = mqtt.connect(process.env.MQTT_SERVER_URI, options);
 console.log("connected flag  " + client.connected);
 
-// Handle incoming messages
+// Initialize mqtt data buffer
 const maxRoomNumber = 2;
 var roomData = [];
 for (i = 0; i < maxRoomNumber; i++){
@@ -85,6 +85,7 @@ for (i = 0; i < maxRoomNumber; i++){
     });
 }
 
+// Handle incoming messages
 client.on('message',function(topic, message, packet){
 	console.log('message is ' + message);
     console.log('topic is ' + topic);
@@ -183,9 +184,13 @@ myApp.post('/login', function(req, res){
 
 // Logout
 myApp.get('/logout', function(req, res){
-    req.session.username = "";
-    req.session.userLoggedIn = false;
-    res.render('login', {error: 'Sucessfully logged out'});
+    if (req.session.username) {
+        req.session.destroy(function(err) {
+            res.render('login', {error: 'Sucessfully logged out'});
+        });
+    } else {
+        res.render('login', {error: 'Not logged in yet!'});
+    }
 });
 
 // Home page
@@ -263,6 +268,11 @@ myApp.post('/led', function(req, res){
             }
         }
     }
+});
+
+// 404 page
+myApp.all('*', function(req, res) {
+    res.status(404).send('<h1>404 Not Found</h1>');
 });
 
 // Start the server and listen at a port
