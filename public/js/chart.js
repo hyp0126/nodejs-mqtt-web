@@ -23,7 +23,7 @@ function updateChart(date) {
         cache: false,
         success: function (result) {
             var splits;
-            for (tempMsg of result.tempMsgs) {
+            for (var tempMsg of result.tempMsgs) {
                 splits = tempMsg.topic.split('/');
                 if (splits[1] == 'room1') {
                     tempDataPoints[0].push({

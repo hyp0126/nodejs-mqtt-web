@@ -110,7 +110,7 @@ console.log("connected flag  " + mqttclient.connected);
 // Initialize mqtt data buffer
 const maxRoomNumber = 2;
 var roomData = [];
-for (i = 0; i < maxRoomNumber; i++){
+for (var i = 0; i < maxRoomNumber; i++){
     roomData.push({
         temperature: '',
         humidity: '',
@@ -124,7 +124,7 @@ mqttclient.on('message',function(topic, message, packet){
 	//console.log('message is ' + message);
     //console.log('topic is ' + topic);
 
-    for (i = 0; i < maxRoomNumber; i++){
+    for (var i = 0; i < maxRoomNumber; i++){
         var topics = topic.toString().split('/');
         if (topics[1] == 'room'.concat(i+1)){
             if (topics[2] == 'temperature'){
